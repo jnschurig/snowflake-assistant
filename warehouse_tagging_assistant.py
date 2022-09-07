@@ -172,11 +172,8 @@ def go():
                 assistant_enabled_setting = st.radio('Assistant Enabled', ('All', 'Yes', 'No'), key='assistant_enabled_setting', help='Filter warehouse list based on whether Assistant is enabled on that warehouse already.')
 
                 if st.button('Refresh Warehouse List', key='refresh_wh_button', help='Clears the cache, so all large data sources will be rerun. You may need to push the button a second time to trigger a reload.'):
-                    # caching.clear_cache()
                     st.experimental_memo.clear()
                     st.experimental_rerun()
-                    # with st.spinner('Getting Warehouses'):
-                        # account_warehouses_df = st.session_state['main_session'].sql('show warehouses').collect()
 
                 warehouse_list = ['']
                 wh_lookup = {}

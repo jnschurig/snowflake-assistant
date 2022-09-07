@@ -18,7 +18,8 @@ create tag if not exists tagging_assist_db.tagging.tag_assistant_enabled
 ;
 
 create schema if not exists tagging_assist_db.metadata;
-create or replace view tagging_assist_db.metadata.warehouse_usage_last_month copy grants as (
+
+create or replace view tagging_assist_db.metadata.warehouse_applied_tags copy grants as (
 with 
   base_tags as ( -- Aggregate applied tags into variant object
     select object_name as warehouse_name
@@ -29,13 +30,16 @@ with
        and domain = 'WAREHOUSE'
      group by object_name
     )
- ,flag_warehouses as ( -- Pull out the assistant enabled tag
     select warehouse_name
           ,tag_assignments:"TAG_ASSISTANT_ENABLED"::string as assistant_enabled
           ,object_delete(tag_assignments, 'TAG_ASSISTANT_ENABLED') as tag_assignments
       from base_tags
-    )
- ,get_usage as ( -- Aggregate warehouse account usage and filter by most recent 30 days
+)
+;
+
+create or replace view tagging_assist_db.metadata.warehouse_usage_last_month copy grants as (
+with
+  get_usage as ( -- Aggregate warehouse account usage and filter by most recent 30 days
     select warehouse_name
           ,sum(credits_used) as total_credits_used
       from snowflake.account_usage.warehouse_metering_history
@@ -48,8 +52,9 @@ select nvl(a.warehouse_name, b.warehouse_name) as warehouse_name
       ,nvl(b.tag_assignments, object_construct()) as tag_assignments
       ,nvl(a.total_credits_used, 0) as total_credits_used
   from get_usage a
-  full join flag_warehouses b on a.warehouse_name = b.warehouse_name
+  full join warehouse_applied_tags b on a.warehouse_name = b.warehouse_name
 )
+;
 
 -- Warehouse --
 create warehouse if not exists tagging_assist_wh
@@ -60,7 +65,6 @@ create warehouse if not exists tagging_assist_wh
   comment = 'Main warehouse for use with the Tagging Assistant app.'
   with tag (tagging_assist_db.tagging.tag_assistant_enabled = 'y')
 ;
-
 
 -- In case the warehouse already exists...
 alter warehouse tagging_assist_wh set warehouse_size = xsmall;
