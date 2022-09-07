@@ -11,9 +11,7 @@ Once Python is installed, open a command prompt and CD to the repository directo
 
 Then run `streamlit run warehouse_tagging_assistant.py`.
 
-If running this locally is too difficult, feel free to try Snowflake Tagging Assistant out on Streamlit Cloud.
+If running this locally is too difficult, feel free to try out the [Snowflake Tagging Assistant on Streamlit Cloud](https://jnschurig-snowflake-assistan-warehouse-tagging-assistant-k0mmww.streamlitapp.com/).
 
 This application is licensed under the GNU GPL3. Please refer to the included license file 
 for questions about what you can and can't do with this software.
-
-More to come!
