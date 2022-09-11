@@ -40,7 +40,7 @@ administrators to monitor warehouse credit usage and reduce overall expenditure.
 In addition, this tool can help attribute costs that might otherwise be absorbed 
 by a provider who did not incur that cost in the first place.
 
-If there are issues running this app, try doing and hard refresh or using 
+If there are issues running this app, try doing a hard refresh or using 
 the _**Reset Session**_ button under _**Additional Options**_. If issues 
 persist when it may have worked in the past, try running the Preinstallation 
 script on the Authentication tab. Something may have changed since the last 

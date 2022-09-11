@@ -1,10 +1,16 @@
 import streamlit as st
 import snowflake.snowpark as sp
-from snowflake.snowpark.functions import col, lit
+# from snowflake.snowpark.functions import col, lit
+import pandas as pd
+# import seaborn as sns 
+import matplotlib.pyplot as plt
 import constants, utility, re
 import json
 
-change_log = '''Change Log
+change_log = '''
+1.1.0 - 2022-09-10
+- Added some usage stats to Warehouse display
+---
 1.0.0 - 2022-08-22
 - First version debut!
 - Warehouse creation and editing
@@ -103,6 +109,7 @@ def go():
             # if st.button('Disconnect', help='Disconnect current Snowflake session'):
             #     if st.session_state['authenticated']:
             #         st.session_state['main_session'].close()
+            #         st.experimental_rerun()
 
             if st.button('Reset Session', help='Reset all session variables to default values.'):
                 if st.session_state['authenticated']:
@@ -183,7 +190,6 @@ def go():
                         wh_lookup[wh_name] = {}
                         wh_lookup[wh_name]['name'] = wh_name
 
-                        # assist_is_enabled_wh = st.session_state['main_session'].sql("select nvl(system$get_tag('tagging_assist_db.tagging.tag_assistant_enabled', '" + wh_name + "', 'warehouse'), 'n') as enabled").collect()
                         assist_is_enabled_wh = cache_small_sql("select nvl(system$get_tag('tagging_assist_db.tagging.tag_assistant_enabled', '" + wh_name + "', 'warehouse'), 'n') as enabled", main_url)
                         assist_is_enabled_wh = assist_is_enabled_wh[0]['ENABLED']
                         wh_lookup[wh_name]['assist_enabled'] = assist_is_enabled_wh
@@ -211,16 +217,12 @@ def go():
                         wh_lookup[wh_name]['query_acceleration'] = {}
                         wh_lookup[wh_name]['query_acceleration']['enabled'] = row['enable_query_acceleration']
                         wh_lookup[wh_name]['query_acceleration']['max_scale_factor'] = row['query_acceleration_max_scale_factor']
-
-                selected_wh = st.selectbox('Select', warehouse_list, key='selected_wh', help='Warehouses found in the account which are available to `sysadmin`')
+                    
+            selected_wh = st.selectbox('Select', warehouse_list, key='selected_wh', help='Warehouses found in the account which are available to `sysadmin`')
                 
-                # if st.session_state.debug: st.json(wh_lookup) 
-
             with wh_col2:
-                # st.markdown('Details')
                 if selected_wh != '':
                     st.markdown('Name: **' + selected_wh + '**')
-                    # st.markdown('Owner: **' + wh_lookup[selected_wh]['owner'] + '**')
                     st.markdown('Current Size: **' + wh_lookup[selected_wh]['size'] + '**')
                     auto_suspend_breakdown = utility.format_seconds_interval(wh_lookup[selected_wh]['auto_suspend'])
                     st.markdown('Auto Suspend: **' + str(auto_suspend_breakdown['total_seconds']) + ' seconds** (' + auto_suspend_breakdown['description'] + ')')
@@ -243,6 +245,19 @@ def go():
                             st.warning('Disabled')
 
             # st.markdown('---')
+            with st.container():
+                st.write('Average Credit Usage Over 30 Days')
+                wh_stats1, wh_stats2 = st.columns(2)
+                with st.spinner('Getting Usage Stats...'):
+                    # warehouse_usage_stats = pd.DataFrame(cache_large_sql('''select start_day_name, round(sum(credits_used), 2)::float as credits_used from tagging_assist_db.metadata.warehouse_usage_last_month group by start_day_name ''', main_url))
+                    warehouse_usage_stats = pd.DataFrame(cache_large_sql('''select warehouse_name, start_day_name, start_hour, round(credits_used, 2)::float as credits_used from tagging_assist_db.metadata.warehouse_usage_last_month order by 1, 2, 3 ''', main_url))
+                    if selected_wh != '':
+                        warehouse_usage_stats = warehouse_usage_stats[warehouse_usage_stats['WAREHOUSE_NAME'] == selected_wh]
+                with wh_stats1:
+                    st.area_chart(warehouse_usage_stats.groupby(['START_DAY_NAME'], as_index=False).mean(), x='START_DAY_NAME', y='CREDITS_USED')
+
+                with wh_stats2:
+                    st.area_chart(warehouse_usage_stats.groupby(['START_HOUR'], as_index=False).mean(), x='START_HOUR', y='CREDITS_USED')
 
             if selected_wh != '' and wh_lookup[selected_wh]['assist_enabled'] == 'y':
                 with st.form('warehouse_settings', clear_on_submit=True):

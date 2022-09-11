@@ -41,16 +41,22 @@ create or replace view tagging_assist_db.metadata.warehouse_usage_last_month cop
 with
   get_usage as ( -- Aggregate warehouse account usage and filter by most recent 30 days
     select warehouse_name
-          ,sum(credits_used) as total_credits_used
+          ,credits_used
+          ,start_time
+          ,end_time
       from snowflake.account_usage.warehouse_metering_history
      where start_time >= dateadd('day', -30, current_timestamp)
-     group by warehouse_name
     )
 -- Combine tags with warehouse usage
 select nvl(a.warehouse_name, b.warehouse_name) as warehouse_name
       ,nvl(b.assistant_enabled, 'n') as assistant_enabled
       ,nvl(b.tag_assignments, object_construct()) as tag_assignments
-      ,nvl(a.total_credits_used, 0) as total_credits_used
+      ,nvl(a.credits_used, 0) as credits_used
+      ,a.start_time
+      ,a.end_time
+      ,to_date(a.start_time) as start_date
+      ,dayofweek(start_date) || ' ' || dayname(start_date) as start_day_name
+      ,to_char(a.start_time, 'hh24') as start_hour
   from get_usage a
   full join warehouse_applied_tags b on a.warehouse_name = b.warehouse_name
 )
