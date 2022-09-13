@@ -14,7 +14,7 @@ I hope you enjoy using the Tagging Assistant :)
 APP_INFO_TEXT = ''' 
 Try these steps:
 1. Copy the _**Pre-installation Scripts**_ and run them in your Snowflake 
-   account. (Require `ACCOUNTADMIN` privileges)
+   account. (Requires `ACCOUNTADMIN` privileges)
 2. Log in to Snowflake using the app here
   - The Account URL may require special formatting for regions outside of 
     AWS us-west-2

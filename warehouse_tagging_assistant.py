@@ -260,8 +260,18 @@ def go():
                     st.area_chart(warehouse_usage_stats.groupby(['START_HOUR'], as_index=False).mean(), x='START_HOUR', y='CREDITS_USED')
 
             if selected_wh != '' and wh_lookup[selected_wh]['assist_enabled'] == 'y':
+                sch_col1, sch_col2 = st.columns([2, 6])
+                with sch_col1:
+                    enable_schedules = st.radio('Enable Scheduling', (False, True), key='enable_schedules', help='If enabled, the warehouse size will be set to a specified size on a schedule.')
+
+                with sch_col2:
+                    if enable_schedules:
+                        schedule_count = st.slider('Number of Schedules', 1, 10, value=1, key='schedule_count')
+
                 with st.form('warehouse_settings', clear_on_submit=True):
                     st.subheader('Edit ' + selected_wh + ' Settings')
+
+
                     whcol1, whcol2 = st.columns([5, 2], gap='medium')
                     # whcol1, whcol2 = st.columns([3, 1], gap='medium')
                     with whcol2:
@@ -301,7 +311,7 @@ def go():
                     # with st.expander('Query Acceleration', False):
                     query_acc_col1, query_acc_col2 = st.columns([2, 7])
                     with query_acc_col1:
-                        new_wh_query_acc = st.radio('Enable Acceleration', (False, True), help='Allow the warehouse to automatically scale vertically. If in doubt, leave as False')
+                        new_wh_query_acc = st.radio('Enable Acceleration', (False, True), help='Enable __*query acceleration*__ service and allow the warehouse to automatically scale vertically. If in doubt, leave as False')
 
                     with query_acc_col2:
                         new_wh_query_acc_scaling = st.slider('Scale Factor', min_value=0, max_value=100, value=wh_lookup[selected_wh]['query_acceleration']['max_scale_factor'], help='Unless Query Accleration is enabled, this setting does nothing. Allows resource scaling as a multiple of this number. If set to 2, the base warehouse size can scale up to 2x its normal resource amount.')

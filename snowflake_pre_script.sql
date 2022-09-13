@@ -11,15 +11,20 @@ use role sysadmin;
 
 -- Database objects --
 create database if not exists tagging_assist_db;
-create schema if not exists tagging_assist_db.tagging;
-create tag if not exists tagging_assist_db.tagging.tag_assistant_enabled
+use database tagging_assist_db;
+
+create schema if not exists tagging;
+use schema tagging;
+
+create tag if not exists tag_assistant_enabled
   allowed_values 'y', 'n'
   comment = 'Tracking whether the tag assistant is enabled on a given warehouse'
 ;
 
-create schema if not exists tagging_assist_db.metadata;
+create schema if not exists metadata;
+use schema metadata;
 
-create or replace view tagging_assist_db.metadata.warehouse_applied_tags copy grants as (
+create or replace view warehouse_applied_tags copy grants as (
 with 
   base_tags as ( -- Aggregate applied tags into variant object
     select object_name as warehouse_name
@@ -37,7 +42,7 @@ with
 )
 ;
 
-create or replace view tagging_assist_db.metadata.warehouse_usage_last_month copy grants as (
+create or replace view warehouse_usage_last_month copy grants as (
 with
   get_usage as ( -- Aggregate warehouse account usage and filter by most recent 30 days
     select warehouse_name
