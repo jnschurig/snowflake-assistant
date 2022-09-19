@@ -6,10 +6,11 @@ import constants, utility, re, json
 from time import sleep
 
 change_log = '''
-1.1.0 - 2022-09-19
-- Added some usage stats to Warehouses tab
-- Added scheduled warehouse size changes using CRON
-- Added a 'Disconnect' button to Additional Options
+1.1.0 - 2022-09-19 
+- Added some usage stats to Warehouses tab 
+- Added scheduled warehouse size changes using CRON 
+- Added a 'Disconnect' button to Additional Options 
+- Updated the name of the page to match the name of the script 
 ---
 1.0.0 - 2022-08-22
 - First version debut!
@@ -227,8 +228,9 @@ def go():
         if key not in st.session_state:
             st.session_state[key] = default_state[key]
 
+    page_title = 'Warehouse Tagging Assistant'
     st.set_page_config(
-        page_title='Tagging Assistant',
+        page_title=page_title,
         layout='centered',
         initial_sidebar_state='collapsed',
         menu_items={
@@ -236,7 +238,7 @@ def go():
         }
     )
 
-    st.header('Tagging Assistant')
+    st.header(page_title)
 
     with st.sidebar:
         with st.expander('New to the Assistant?', False):

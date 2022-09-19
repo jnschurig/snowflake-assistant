@@ -31,7 +31,8 @@ Try these steps:
 '''
 
 APP_ABOUT_TEXT = ''' 
-Welcome to the Warehouse Tagging Assitant!
+Welcome to the Warehouse Tagging Assitant! Check out our 
+[GitHub Repository](https://github.com/jnschurig/snowflake-assistant).
 
 This tool was designed to help manage Snowflake warehouses. This involves 
 creating and modifying existing warehouses, and it also involves creating tags 
