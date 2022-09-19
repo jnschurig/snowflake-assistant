@@ -14,7 +14,7 @@ I hope you enjoy using the Tagging Assistant :)
 APP_INFO_TEXT = ''' 
 Try these steps:
 1. Copy the _**Pre-installation Scripts**_ and run them in your Snowflake 
-   account. (Require `ACCOUNTADMIN` privileges)
+   account. (Requires `ACCOUNTADMIN` privileges)
 2. Log in to Snowflake using the app here
   - The Account URL may require special formatting for regions outside of 
     AWS us-west-2
@@ -31,7 +31,8 @@ Try these steps:
 '''
 
 APP_ABOUT_TEXT = ''' 
-Welcome to the Warehouse Tagging Assitant!
+Welcome to the Warehouse Tagging Assitant! Check out our 
+[GitHub Repository](https://github.com/jnschurig/snowflake-assistant).
 
 This tool was designed to help manage Snowflake warehouses. This involves 
 creating and modifying existing warehouses, and it also involves creating tags 
@@ -40,7 +41,7 @@ administrators to monitor warehouse credit usage and reduce overall expenditure.
 In addition, this tool can help attribute costs that might otherwise be absorbed 
 by a provider who did not incur that cost in the first place.
 
-If there are issues running this app, try doing and hard refresh or using 
+If there are issues running this app, try doing a hard refresh or using 
 the _**Reset Session**_ button under _**Additional Options**_. If issues 
 persist when it may have worked in the past, try running the Preinstallation 
 script on the Authentication tab. Something may have changed since the last 
@@ -51,9 +52,17 @@ DEFAULT_ROLE = 'sysadmin'
 
 DEFAULT_WAREHOUSE = 'tagging_assist_wh'
 
+DEFAULT_DATABASE = 'tagging_assist_db'
+
+DEFAULT_WAREHOUSE_SIZE = 'X-Small'
+
+DEFAULT_TIMEZONE = 'America/Los_Angeles'
+
+DEFAULT_CRON = '0 0 * * *' # Daily at midnight
+
 DISK_CACHE_MAX_AGE_SECONDS = 600
 
-MEMORY_CACHE_MAX_AGE_SECONDS = 3600
+MEMORY_CACHE_MAX_AGE_SECONDS = 600
 
 # 1 second, 1 minute, 5 minutes, 10 minutes, 30 minutes, 1 hour, 2 hours, 4 hours, 8 hours, 12 hours, never suspend
 WAREHOUSE_AUTO_SUSPEND_STEPS = [1, 60, 300, 600, 1800, 3600, 7200, 14400, 28800, 43200, 0]
@@ -71,9 +80,39 @@ WAREHOUSE_SIZES = {
     '6X-Large' : {'code': 'x6large', 'credit_rate': 512}, 
     }
 
+def GET_WAREHOUSE_CODE_LIST():
+  return_list = []
+  for key in WAREHOUSE_SIZES.keys():
+    return_list.append(WAREHOUSE_SIZES[key]['code'])
+  return return_list
+
+def REVERSE_WAREHOUSE_SIZES():
+  return_dict = {}
+  for key in WAREHOUSE_SIZES.keys():
+    return_dict[WAREHOUSE_SIZES[key]['code']] = key
+  return return_dict
+
 COMMENT_MAX_LENGTH = 500
 
 SUGGESTED_VALUE_SQL = '''-- Get a list of existing values for this tag
 select nvl(listagg(distinct tag_value, ', ') within group (order by tag_value), '') as suggested_values
   from snowflake.account_usage.tag_references
 '''
+
+CRON_HELP_TEXT = ''' 
+Cron strings are formatted as 5 parts separated by a space. 
+In order, each of the 5 parts refers to: minute, hour, day 
+(of the month), month, day (of the week)
+
+For detailed help writing cron strings, try visiting 
+[**crontab guru**](https://crontab.guru/)
+
+Strings generated at contab guru can be copied and pasted 
+into cron fields here.
+'''
+
+TIMEZONE_INPUT_HELP = 'Valid tz string. See [**Valid Timezones**](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)'
+
+DEFAULT_RERUN_WAIT_TIME_SECONDS = 3
+
+MAX_SCHEDULE_COUNT = 10

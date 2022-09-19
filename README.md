@@ -1,10 +1,13 @@
-# Snowflake Tagging Assistant
+# Snowflake Assistant
 
-The Snowflake Tagging Assistant was designed to help control Snowflake spend by applying tagging 
-to warehouses, and making that process easy.
+The Snowflake Assistant was designed to help make Snowflake easier to manage.
+
+The Warehouse Tagging Assistant was created to mitigate Snowflake spend by applying tagging 
+to warehouses, apply duration limits to warehouse size, and make those processes easy.
 
 To run this application locally, you will need to install Python, and the requirements found 
-in `requirements.txt`
+in `requirements.txt`. As of this writing, Python 3.8 is required because of the Snowpark 
+python package.
 
 Once Python is installed, open a command prompt and CD to the repository directory. Then run 
 `pip install -r requirements.txt` and it should install all the necessary packages.
