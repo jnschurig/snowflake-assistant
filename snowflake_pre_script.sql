@@ -51,7 +51,8 @@ with
     select object_name as warehouse_name
           ,object_agg(tag_name, tag_value::variant) as tag_assignments
       from snowflake.account_usage.tag_references
-     where tag_database = 'TAGGING_ASSIST_DB'
+     where object_deleted is null
+       and tag_database = 'TAGGING_ASSIST_DB'
        and tag_schema = 'TAGGING'
        and domain = 'WAREHOUSE'
      group by object_name
@@ -71,7 +72,7 @@ with
           ,start_time
           ,end_time
       from snowflake.account_usage.warehouse_metering_history
-     where start_time >= dateadd('day', -30, current_timestamp)
+     where start_time >= dateadd('day', -30, current_date)
     )
 -- Combine tags with warehouse usage
 select nvl(a.warehouse_name, b.warehouse_name) as warehouse_name

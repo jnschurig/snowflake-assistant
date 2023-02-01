@@ -60,8 +60,6 @@ DEFAULT_TIMEZONE = 'America/Los_Angeles'
 
 DEFAULT_CRON = '0 0 * * *' # Daily at midnight
 
-DISK_CACHE_MAX_AGE_SECONDS = 600
-
 MEMORY_CACHE_MAX_AGE_SECONDS = 600
 
 # 1 second, 1 minute, 5 minutes, 10 minutes, 30 minutes, 1 hour, 2 hours, 4 hours, 8 hours, 12 hours, never suspend
@@ -116,3 +114,11 @@ TIMEZONE_INPUT_HELP = 'Valid tz string. See [**Valid Timezones**](https://en.wik
 DEFAULT_RERUN_WAIT_TIME_SECONDS = 3
 
 MAX_SCHEDULE_COUNT = 10
+
+CONTEXT_FORMAT_COLUMN_COUNT = {
+    'standard': 2,
+    'wide': 4,
+    'narrow': 1,
+}
+
+VALID_CONTEXT_TYPES = ['Role', 'Warehouse', 'Database', 'Schema']
