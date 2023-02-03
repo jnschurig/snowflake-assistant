@@ -48,11 +48,17 @@ script on the Authentication tab. Something may have changed since the last
 time you ran the app!
 '''
 
-DEFAULT_ROLE = 'sysadmin'
+# Default "power" role. This role will be used to create databases and schemas.
+# This role will be inherit any app-specific created.
+DATABASE_OBJECT_ROLE = 'sysadmin'
 
-DEFAULT_WAREHOUSE = 'tagging_assist_wh'
+# The role that will create and own roles created by this app.
+# Must have permissions sufficient to create roles in the Snowflake account.
+SECURITY_OBJECT_ROLE = 'securityadmin'
 
-DEFAULT_DATABASE = 'tagging_assist_db'
+SCHEDULING_WAREHOUSE = 'tagging_assist_wh' # Change this to something specific to scheduling.
+
+DEFAULT_DATABASE = 'snowflake_assistant'
 
 DEFAULT_WAREHOUSE_SIZE = 'X-Small'
 
@@ -76,6 +82,19 @@ WAREHOUSE_SIZES = {
     '4X-Large' : {'code': 'x4large', 'credit_rate': 128}, 
     '5X-Large' : {'code': 'x5large', 'credit_rate': 256}, 
     '6X-Large' : {'code': 'x6large', 'credit_rate': 512}, 
+    }
+
+WAREHOUSE_SIZES_SP_OPTIMIZED = {
+    # 'X-Small'  : {'code': 'xsmall', 'credit_rate': 1}, 
+    # 'Small'   : {'code': 'small', 'credit_rate': 2}, 
+    'Medium'  : {'code': 'medium', 'credit_rate': 6}, 
+    'Large'   : {'code': 'large', 'credit_rate': 12}, 
+    'X-Large'  : {'code': 'xlarge', 'credit_rate': 24}, 
+    '2X-Large' : {'code': 'xxlarge', 'credit_rate': 48}, 
+    '3X-Large': {'code': 'xxxlarge', 'credit_rate': 96}, 
+    '4X-Large' : {'code': 'x4large', 'credit_rate': 192}, 
+    '5X-Large' : {'code': 'x5large', 'credit_rate': 384}, 
+    '6X-Large' : {'code': 'x6large', 'credit_rate': 768}, 
     }
 
 def GET_WAREHOUSE_CODE_LIST():
@@ -115,10 +134,40 @@ DEFAULT_RERUN_WAIT_TIME_SECONDS = 3
 
 MAX_SCHEDULE_COUNT = 10
 
-CONTEXT_FORMAT_COLUMN_COUNT = {
+FORMAT_COLUMN_COUNT = {
     'standard': 2,
+    'centered': 2,
     'wide': 4,
     'narrow': 1,
 }
 
 VALID_CONTEXT_TYPES = ['Role', 'Warehouse', 'Database', 'Schema']
+
+TAG_FORM_FIELDS = [
+  {
+    'name': 'Tag Database', 
+    'default': '', 
+    'help': 'Will attempt to use current context if not supplied.',
+    'type': 'text_input'
+  },
+  {
+    'name': 'Tag Schema', 
+    'default': '', 
+    'help': 'Will attempt to use current context if not supplied.',
+    'type': 'text_input'
+  }, 
+  {
+    'name': 'Tag Name', 
+    'default': '', 
+    'help': 'Required. A database-friendly name for this tag.',
+    'type': 'text_input'
+  }, 
+  # {
+  #   'name': 'Allowed Values', 
+  #   'default': '', 
+  #   'help': 'Comma separated list of exclusive values that are allowed to be assigned to this tag.',
+  #   'type': 'text_input'
+  # },
+]
+
+OBJECT_CREATION_COMMENT = 'Created by the Snowflake Assistant tool.'

@@ -9,12 +9,7 @@ def main():
 
     if st.session_state['authenticated']:
         context = st.session_state['current_context']
-        display_context = '👤 ' + context['role'] + ' | 🖧 ' + context['warehouse']
-        if context['database']:
-            display_context += ' | ' + str(context['database'])
-        if context['schema']:
-            display_context += ' > ' + str(context['schema'])
-        st.caption(display_context)
+        st.caption(sesh.format_context(context))
         # if 'role'
         warehouse_df = pd.DataFrame(sesh.cache_sql_disk('show warehouses', st.session_state['account'], context['role']))
 

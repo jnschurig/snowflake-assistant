@@ -3,6 +3,7 @@ import pandas as pd
 import snowflake.snowpark as sp 
 from snowflake.snowpark.exceptions import SnowparkSQLException
 import constants
+import time
 
 change_log = ''' 
 1.0.0 - 2023-01-31
@@ -140,8 +141,10 @@ def run_sql(sql):
                 st.session_state['authenticated'] = False
                 del st.session_state['main_session']
                 st.experimental_rerun()
+            else:
+                raise err
     else:
-        st.write('NONE!')
+        st.error('No valid session')
         return None
 
 @st.experimental_memo(persist='disk', show_spinner=False)
@@ -163,7 +166,7 @@ def cache_sql_disk(sql, account='account', role=''):
                     del st.session_state['main_session']
                     st.experimental_rerun()
         else:
-            st.write('NONE!')
+            st.error('No valid session')
             return None
 
 @st.experimental_memo(persist=None, ttl=constants.MEMORY_CACHE_MAX_AGE_SECONDS, show_spinner=False)
@@ -184,7 +187,7 @@ def cache_sql_memory(sql, account='account', role=''):
                 del st.session_state['main_session']
                 st.experimental_rerun()
     else:
-        st.write('NONE!')
+        st.error('No valid session')
         return None
 
 def clear_all_cache():
@@ -243,7 +246,12 @@ def context_selector(context_type):
     Dynamically display a context selector. Valid context types 
     come from constants.VALID_CONTEXT_TYPES
     '''
-    new_context = st.selectbox(context_type, sort_dropdown_with_default(run_sql('show ' + context_type + 's'), st.session_state['current_context'][context_type.lower()], column='name'), index=0, key=context_type.lower() + '_selection')
+    new_context = st.selectbox(
+        context_type, 
+        sort_dropdown_with_default(run_sql('show ' + context_type + 's'), st.session_state['current_context'][context_type.lower()], column='name'), 
+        index=0, 
+        key=context_type.lower() + '_selection'
+    )
     if new_context != st.session_state['current_context'][context_type.lower()]:
         run_sql('use ' + context_type + ' ' + str(new_context))
         st.experimental_rerun()
@@ -256,23 +264,23 @@ def manage_context(display_format='standard'):
     warehouse, database, and schema. The display format 
     can be modified depending on where the context is 
     displayed. Valid display formats can be found in 
-    constants.CONTEXT_FORMAT_COLUMN_COUNT. For displaying 
+    constants.FORMAT_COLUMN_COUNT. For displaying 
     in the sidebar, use 'narrow'. For display in the main 
     page section, use 'standard'. If the page is set to 
     wide mode, try 'wide'.
     '''
     with st.container():
-        if display_format not in list(constants.CONTEXT_FORMAT_COLUMN_COUNT.keys()):
-            st.throw('Error: display format not valid. Please choose a valid format in: ' + str(constants.CONTEXT_FORMAT_COLUMN_COUNT.keys()))
+        if display_format not in list(constants.FORMAT_COLUMN_COUNT.keys()):
+            st.error('Error: display format not valid. Please choose a valid format in: ' + str(constants.FORMAT_COLUMN_COUNT.keys()))
 
-        column_count = constants.CONTEXT_FORMAT_COLUMN_COUNT[display_format]
+        column_count = constants.FORMAT_COLUMN_COUNT[display_format]
         if 'current_context' not in st.session_state:
             st.session_state['current_context'] = {}
 
-        st.session_state['current_context']['role'] = get_first_result('select current_role()')
-        st.session_state['current_context']['warehouse'] = get_first_result('select current_warehouse()')
-        st.session_state['current_context']['database'] = get_first_result('select current_database()')
-        st.session_state['current_context']['schema'] = get_first_result('select current_schema()')
+        st.session_state['current_context']['role'] = str(st.session_state['main_session'].get_current_role()).replace('"', '')
+        st.session_state['current_context']['warehouse'] = str(st.session_state['main_session'].get_current_warehouse()).replace('"', '')
+        st.session_state['current_context']['database'] = str(st.session_state['main_session'].get_current_database()).replace('"', '')
+        st.session_state['current_context']['schema'] = str(st.session_state['main_session'].get_current_schema()).replace('"', '')
 
         context_cols = st.columns(column_count)
         for index, context in enumerate(constants.VALID_CONTEXT_TYPES):
@@ -281,6 +289,19 @@ def manage_context(display_format='standard'):
                 context_selector(context)
 
         return st.session_state['current_context']
+    
+def format_context(context_dict):
+    display_context = ''
+    if len(context_dict) > 0:
+        display_context = '👤 ' + context_dict['role'] 
+        if context_dict['warehouse']:
+            display_context += ' | 🖧 ' + context_dict['warehouse']
+        if context_dict['database']:
+            display_context += ' | ' + str(context_dict['database'])
+        if context_dict['schema']:
+            display_context += ' > ' + str(context_dict['schema'])
+
+    return display_context
     
 def main_handler(label_visibility_setting='visible'):
     context = {}
@@ -306,6 +327,56 @@ def main_handler(label_visibility_setting='visible'):
     
     return context
 
+def initialize_assistant_db(schema='tagging', database=constants.DEFAULT_DATABASE):
+    # See about initializing the application database and schema
+    initialize_db = False
+
+    db_exists = run_sql("show databases like '" + database + "'")
+
+    if len(db_exists) == 0:
+        initialize_db = True
+    else:
+        schema_exists = run_sql("show schemas like '" + schema + "' in database " + database)
+        if len(schema_exists) == 0:
+            initialize_db = True 
+
+    if initialize_db:
+        st.warning('Warning: Recommended DB/Schema not found: ' + database + '.' + schema)
+        with st.expander('DB/Schema Initialization', expanded=True):
+            with open('snowflake_assistant_initialization.sql', 'r') as f:
+                init_sql = f.read()
+
+            init_sql = init_sql.format(
+                security_object_role = constants.SECURITY_OBJECT_ROLE, 
+                database_object_role = constants.DATABASE_OBJECT_ROLE, 
+                snowflake_assistant_db = database, 
+                schema_name = schema
+            )
+            contains_error = False
+            if st.button('Execute', key='execute_init_script', help='Execute the below script as shown. Do at your own risk.'):
+                with st.spinner('Executing...'):
+                    script_list = init_sql.split(';')
+                    for script in script_list:
+                        if script.strip() != '':
+                            try:
+                                st.session_state['main_session'].sql(script).collect()
+                            except SnowparkSQLException as err:
+                                st.error(err)
+                                contains_error = True
+                if not contains_error:
+                    st.success('Initialized!')
+                    time.sleep(3)
+                    st.experimental_rerun()
+
+            st.code(init_sql, language='sql')
+
+            if contains_error and st.button('Reload Page'):
+                st.experimental_rerun()
+
+    # else:
+    #     st.success('All components found. Proceeding')
+
+    return True
 
 if __name__ == '__main__':
     st.set_page_config(

@@ -1,7 +1,7 @@
 import math
 import constants
 
-def format_wh_usage(with_header=True):
+def format_wh_usage(with_header=True, warehouse_type='STANDARD'):
     ''' 
     Returns a block of text, formatted as a table, which contains 
     the warehouse sizes and their credits/hour usage rates.
@@ -20,6 +20,10 @@ def format_wh_usage(with_header=True):
     '''
     return_val = ''
 
+    wh_sizes = constants.WAREHOUSE_SIZES
+    if warehouse_type == 'SNOWPARK-OPTIMIZED':
+        wh_sizes = constants.WAREHOUSE_SIZES_SP_OPTIMIZED
+
     # Determine the correct amount of padding by checking the maximum length of the values.
     if with_header:
         wh_col_header = 'WH Size'
@@ -29,18 +33,18 @@ def format_wh_usage(with_header=True):
     else:
         size_pad_len = 0
         credit_pad_len = 0
-    for key in constants.WAREHOUSE_SIZES.keys():
+    for key in wh_sizes.keys():
         if len(key) > size_pad_len:
             size_pad_len = len(key)
 
-        if len(str(constants.WAREHOUSE_SIZES[key]['credit_rate'])) > credit_pad_len:
-            credit_pad_len = len(str(constants.WAREHOUSE_SIZES[key]['credit_rate']))
+        if len(str(wh_sizes[key]['credit_rate'])) > credit_pad_len:
+            credit_pad_len = len(str(wh_sizes[key]['credit_rate']))
 
     # Create the table
     if with_header:
         return_val = wh_col_header.ljust(size_pad_len) + ' | ' + credit_col_header.ljust(credit_pad_len) + '\n'
-    for key in constants.WAREHOUSE_SIZES.keys():
-        return_val += key.ljust(size_pad_len) + ' | ' + str(constants.WAREHOUSE_SIZES[key]['credit_rate']).ljust(credit_pad_len) + '\n'
+    for key in wh_sizes.keys():
+        return_val += key.ljust(size_pad_len) + ' | ' + str(wh_sizes[key]['credit_rate']).ljust(credit_pad_len) + '\n'
 
     return return_val
 
