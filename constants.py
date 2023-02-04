@@ -162,12 +162,12 @@ TAG_FORM_FIELDS = [
     'help': 'Required. A database-friendly name for this tag.',
     'type': 'text_input'
   }, 
-  # {
-  #   'name': 'Allowed Values', 
-  #   'default': '', 
-  #   'help': 'Comma separated list of exclusive values that are allowed to be assigned to this tag.',
-  #   'type': 'text_input'
-  # },
+  {
+    'name': 'Allowed Values', 
+    'default': '', 
+    'help': 'Comma separated list of exclusive values that are allowed to be assigned to this tag.',
+    'type': 'text_input'
+  },
 ]
 
 OBJECT_CREATION_COMMENT = 'Created by the Snowflake Assistant tool.'
