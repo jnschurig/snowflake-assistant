@@ -69,6 +69,7 @@ def format_seconds_interval(seconds=0):
         "description": "1 hour 3 minutes 21 seconds"
         }
     '''
+    seconds = int(seconds)
     return_val = {'total_seconds': seconds}
     if seconds == 0:
         return_val['status'] = 'Always On'

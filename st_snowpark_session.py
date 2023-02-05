@@ -296,9 +296,9 @@ def format_context(context_dict):
         display_context = '👤 ' + context_dict['role'] 
         if context_dict['warehouse']:
             display_context += ' | 🖧 ' + context_dict['warehouse']
-        if context_dict['database']:
+        if context_dict['database'] and str(context_dict['database']) != 'None':
             display_context += ' | ' + str(context_dict['database'])
-        if context_dict['schema']:
+        if context_dict['schema'] and str(context_dict['schema']) != 'None':
             display_context += ' > ' + str(context_dict['schema'])
 
     return display_context
