@@ -2,121 +2,93 @@ import pandas as pd
 import streamlit as st
 import st_snowpark_session as sesh
 import reference_queries as rq
-import re
-import constants
-import utility 
+import json 
+# import time
 
-def display_warehouse_summary(warehouse_summary_df):
-    # To make sure we are dealing with a pandas DF
-    warehouse_summary_df = pd.DataFrame(warehouse_summary_df)
+def format_tag_dropdown(available_tags_df):
+    tags_list = ['New Tag']
+    if type(available_tags_df) == None:
+        available_tags_df = pd.DataFrame()
+        available_tags_df.columns = ['database_name', 'schema_name', 'name', 'allowed_values']
 
-    with st.sidebar:
-        if 'language_selection' not in st.session_state:
-            st.session_state['language_selection]'] = ''
-        st.markdown('---')
-        st.session_state['language_selection]'] = st.selectbox('Detail Display Style', constants.CODE_DISPLAY_OPTIONS)
-        # if language_option == 'None':
-        #     language_option = ''
+    for idx, row in available_tags_df.iterrows():
+        tag_item = row['database_name'].lower() + '.' + row['schema_name'].lower() + '.' + row['name']
+        tags_list.append(tag_item)
 
-    for idx, row in warehouse_summary_df.iterrows():
-        st.markdown('---')
-        # wh_name = row['name']
-        # wh_size = row['size']
-        # wh_credits = row['']
-        st.markdown('##### ' + row['name'] + '')
-        if row['comment']:
-            st.caption('Comment: ' + row['comment'])
-        wh_col1, wh_col2 = st.columns([1, 1])
+    return tags_list
 
-        # wh_summary = 'Details\n'
-        wh_summary = ''
-        wh_summary += 'Owner: ' + row['owner'] + '\n'
-        wh_summary += 'Type: ' + row['type'] + '\n'
-        wh_summary += 'Size: ' + row['size'] + '\n'
-        wh_summary += 'Cluster Min: ' + str(row['min_cluster_count']) + ', Max: ' + str(row['max_cluster_count']) + '\n'
-        wh_summary += 'Suspend: ' + str(row['auto_suspend']) + '\n'
-        wh_summary += 'Auto Resume: ' + row['auto_resume'] + '\n'
-        wh_summary += 'Created: ' + re.sub('\..*', '', str(row['created_on'])) + '\n'
-        wh_summary += 'Last Resumed: ' + re.sub('\..*', '', str(row['resumed_on'])) + '\n'
-        if row['resource_monitor'] and str(row['resource_monitor']) != 'null':
-            wh_summary += 'Resource Monitor: ' + row['resource_monitor'] + '\n'
-        wh_summary += 'Scaling Policy: ' + row['scaling_policy'] + '\n'
-        wh_summary += 'Query Accel Enabled: ' + row['enable_query_acceleration'] + '\n'
-        wh_summary += 'Query Accel Scale Factor: ' + str(row['query_acceleration_max_scale_factor']) + '\n'
+def display_warehouse_tags(warehouse_details, tags_df=None):
+    # Warehouse details should be a dict or "<class 'pandas.core.series.Series'>"
+    if type(tags_df) == None:
+        tags_df = pd.DataFrame()
+        tags_df.columns = ['database_name', 'schema_name', 'name', 'allowed_values']
 
-        with wh_col1:
-            st.markdown('Details')
-            # st.markdown('Size: _**' + row['size'] + '**_')
-            # st.markdown('Type: _**' + row['type'] + '**_')
-            # st.markdown('Cluster Min: `' + str(row['min_cluster_count']) + '` Max: `' + str(row['max_cluster_count']) + '`')
-            st.code(wh_summary, language=st.session_state['language_selection]'])
+    tag_dict = []
+    if 'TAG_JSON' in warehouse_details:
+        if type(warehouse_details) is dict:
+            tag_dict = warehouse_details['TAG_JSON']
+        if str(type(warehouse_details)) == "<class 'pandas.core.series.Series'>":
+            tag_dict = json.loads(warehouse_details['TAG_JSON'])
 
-        with wh_col2:
-            st.markdown('Recent History Summary')
-            if 'TOTAL_QUERIES' in row:
-                with st.expander('Queries'):
+    tag_values_df = pd.DataFrame.from_dict(tag_dict, orient='columns')#, convert_axes=True, typ='frame')
+    if len(tag_values_df.index) == 0:
+        tag_values_df = pd.DataFrame(columns=['tag_db', 'tag_schema', 'tag_name'])
 
-                    # st.markdown('Total Queries: ' + str(row['TOTAL_QUERIES']))
-                    query_history = ''
-                    query_history += 'Total Queries: ' + str(row['TOTAL_QUERIES']) + '\n'
-                    query_history += 'Distinct Queries: ' + str(row['TOTAL_DISTINCT_QUERIES']) + '\n'
-                    query_history += 'Errors: ' + str(row['ERROR_COUNT']) + '\n'
-                    st.code(query_history, language=st.session_state['language_selection]'])
+    tag_values_df = tag_values_df.merge(tags_df, how='left', left_on=['tag_db', 'tag_schema', 'tag_name'], right_on=['database_name', 'schema_name', 'name'])
 
-                with st.expander('Query Runtime'):
-                    total_time = utility.format_seconds_interval(row['TOTAL_QUERY_TIME']/1000)
-                    execution_time = utility.format_seconds_interval(row['TOTAL_EXECUTION_TIME']/1000)
-                    compile_time = utility.format_seconds_interval(row['TOTAL_COMPILATION_TIME']/1000)
-                    provisioning_time = utility.format_seconds_interval(row['TOTAL_QUEUED_PROVISIONING_TIME']/1000)
-                    repair_time = utility.format_seconds_interval(row['TOTAL_QUEUED_REPAIR_TIME']/1000)
-                    queued_overload_time = utility.format_seconds_interval(row['TOTAL_QUEUED_OVERLOAD_TIME']/1000)
-                    transaction_blocked_time = utility.format_seconds_interval(row['TOTAL_TRANSACTION_BLOCKED_TIME']/1000)
+    # st.markdown('##### ' + warehouse_details['name'] + ' (' + warehouse_details['size'] + ')')
+    with st.expander(warehouse_details['name'] + ' (' + warehouse_details['size'] + ')'):
+        # st.write(warehouse_details['name'] + ' (' + warehouse_details['size'] + ')')
+        st.caption('*New tag values may take up to 3 hours to propagate in the Snowflake account usage views.')
 
-                    avg_total_time = utility.format_seconds_interval(row['AVERAGE_QUERY_TIME']/1000)
-                    avg_execution_time = utility.format_seconds_interval(row['AVERAGE_EXECUTION_TIME']/1000)
-                    avg_compile_time = utility.format_seconds_interval(row['AVERAGE_COMPILATION_TIME']/1000)
-                    avg_provisioning_time = utility.format_seconds_interval(row['AVERAGE_QUEUED_PROVISIONING_TIME']/1000)
-                    avg_repair_time = utility.format_seconds_interval(row['AVERAGE_QUEUED_REPAIR_TIME']/1000)
-                    avg_queued_overload_time = utility.format_seconds_interval(row['AVERAGE_QUEUED_OVERLOAD_TIME']/1000)
-                    avg_transaction_blocked_time = utility.format_seconds_interval(row['AVERAGE_TRANSACTION_BLOCKED_TIME']/1000)
+        for index, row in tag_values_df.iterrows():
+            key_base = row['tag_db'] + '.' + row['tag_schema'] + '.' + row['tag_name']
+            tag_disp_col1, tag_disp_col2 = st.columns(2)
 
-                    st.write('Totals')
-                    query_history = ''
-                    query_history += 'Total: ' + avg_total_time['description'] + '\n'
-                    if execution_time['seconds'] > 0:
-                        query_history += 'Execution: ' + execution_time['description'] + '\n'
-                    if compile_time['seconds'] > 0:
-                        query_history += 'Compile: ' + compile_time['description'] + '\n'
-                    if provisioning_time['seconds'] > 0:
-                        query_history += 'Provisioning: ' + provisioning_time['description'] + '\n'
-                    if repair_time['seconds'] > 0:
-                        query_history += 'Repair: ' + repair_time['description'] + '\n'
-                    if queued_overload_time['seconds'] > 0:
-                        query_history += 'Queued Overload: ' + queued_overload_time['description'] + '\n'
-                    if transaction_blocked_time['seconds'] > 0:
-                        query_history += 'Transaction Blocked: ' + transaction_blocked_time['description'] + '\n'
-                    st.code(query_history, language=st.session_state['language_selection]'])
+            with tag_disp_col1:
+                st.markdown('`' + row['tag_db'] + ' > ' + row['tag_schema'] + '`\n\n' + row['tag_name'])
 
-                    st.write('Averages')
-                    query_history = ''
-                    query_history += 'Avg Total: ' + avg_total_time['description'] + '\n'
-                    if avg_execution_time['seconds'] > 0: 
-                        query_history += 'Avg Execution: ' + avg_execution_time['description'] + '\n'
-                    if avg_compile_time['seconds'] > 0: 
-                        query_history += 'Avg Compile: ' + avg_compile_time['description'] + '\n'
-                    if avg_provisioning_time['seconds'] > 0: 
-                        query_history += 'Avg Provisioning: ' + avg_provisioning_time['description'] + '\n'
-                    if avg_repair_time['seconds'] > 0: 
-                        query_history += 'Avg Repair: ' + avg_repair_time['description'] + '\n'
-                    if avg_queued_overload_time['seconds'] > 0: 
-                        query_history += 'Avg Queued Overload: ' + avg_queued_overload_time['description'] + '\n'
-                    if avg_transaction_blocked_time['seconds'] > 0: 
-                        query_history += 'Avg Transaction Blocked: ' + avg_transaction_blocked_time['description'] + '\n'
-                    st.code(query_history, language=st.session_state['language_selection]'])
+            with tag_disp_col2:
+                new_value = st.text_input('Tag Value', row['value'], key=key_base + '_new_val_' + str(index), label_visibility='collapsed',)
+                if new_value and new_value != row['value']:
+                    alter_text = 'alter warehouse ' + warehouse_details['name'] + ' set tag ' + key_base + ' = $$' + new_value + '$$'
+                    try:
+                        # add_tag_value_result = sesh.run_sql(alter_text)
+                        add_tag_value_result = st.session_state['main_session'].sql(alter_text).collect()
+                        st.success('Successfully updated tag value!')
+                    except:
+                        st.error('Error: Unable to set tag value. Check to make sure the current role has access to set tags on this warehouse.')
+                    # time.sleep(2)
+                    # st.experimental_rerun()
+                    # new_value = row['value']
+                st.caption('Allowed Values: ' + row['allowed_values'])
+            
+        # add_tag_form(tag_values_df)
+        with st.form(key=warehouse_details['name'] + '_new_value_form', clear_on_submit=True):
+            dropdown_values = format_tag_dropdown(tags_df)
+            new_tag_val_col1, new_tag_val_col2 = st.columns(2)
 
-            if 'CREDITS_USED' in row:
-                with st.expander('Usage'):
-                    st.markdown('Total Credits: ' + str(row['CREDITS_USED']))
+            with new_tag_val_col1:
+                new_tag_name = st.selectbox('Tag', dropdown_values, label_visibility='collapsed')
+
+            with new_tag_val_col2:
+                new_tag_value = st.text_input('Tag Value', '', placeholder='Tag Value', label_visibility='collapsed')
+
+            if st.form_submit_button('Set Tag'):
+                if new_tag_value and new_tag_name != 'New Tag':
+                    new_tag_alter = 'alter warehouse ' + warehouse_details['name'] + ' set tag ' + new_tag_name + ' = $$' + new_tag_value + '$$'
+                    try:
+                        # new_tag_result = sesh.run_sql(new_tag_alter)
+                        new_tag_result = st.session_state['main_session'].sql(new_tag_alter).collect()
+                        st.success(new_tag_result[0]['status'])
+                    except:
+                        st.error('Error: Unable to set tag value. Check to make sure the current role has access to set tags on this warehouse.')
+                    # st.code(new_tag_alter)
+                    # time.sleep(2)
+                    # st.experimental_rerun()
+                    new_tag_value = 'New Tag'
+                else:
+                    st.error('Error: Be sure to select a tag AND set a tag value. If no tags are available, create one...')
 
     return True
 
@@ -144,37 +116,48 @@ def main():
         wh_option_col1, wh_option_col2 = st.columns([1, 3])
 
         with wh_option_col1:
-            summary_days = st.slider('Days of Recent History', 0, 30, 7, step=1, help="0 indicates today's history only")
+            # summary_days = st.slider('Days of Recent History', 0, 30, 7, step=1, help="0 indicates today's history only")
+            only_untagged = st.checkbox('Untagged Only', help='Only show warehouses that are not tagged at all.')
 
         with wh_option_col2:
             wh_search_val = st.text_input('Warehouse Search', value='', placeholder='Warehouse Search', label_visibility='collapsed')
         # if 'role'
         warehouse_df = pd.DataFrame(sesh.cache_sql_disk('show warehouses', st.session_state['account'], context['role']))
-        wh_summary_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_QUERY_HISTORY_SUMMARY.format(date_range = str(summary_days)), st.session_state['account'], context['role']))
+        # wh_summary_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_QUERY_HISTORY_SUMMARY.format(date_range = str(summary_days)), st.session_state['account'], context['role']))
         wh_tags_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_TAG_SUMMARY, st.session_state['account'], context['role']))
-        wh_metering_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_METERING_SUMMARY.format(date_range = str(summary_days)), st.session_state['account'], context['role']))
+        # wh_metering_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_METERING_SUMMARY.format(date_range = str(summary_days)), st.session_state['account'], context['role']))
 
-        warehouse_df = warehouse_df.merge(wh_summary_df, how='left', left_on='name', right_on='WAREHOUSE_NAME')
+        # warehouse_df = warehouse_df.merge(wh_summary_df, how='left', left_on='name', right_on='WAREHOUSE_NAME')
         warehouse_df = warehouse_df.merge(wh_tags_df, how='left', left_on='name', right_on='WAREHOUSE_NAME')
-        warehouse_df = warehouse_df.merge(wh_metering_df, how='left', left_on='name', right_on='WAREHOUSE_NAME')
+        # warehouse_df = warehouse_df.merge(wh_metering_df, how='left', left_on='name', right_on='WAREHOUSE_NAME')
 
         warehouse_df['TAG_JSON'] = warehouse_df['TAG_JSON'].fillna('[]')
+
+        if only_untagged:
+            warehouse_df = warehouse_df[warehouse_df['TAG_JSON'].isin(['[]'])]
 
         if wh_search_val:
             warehouse_df = warehouse_df[warehouse_df.apply(lambda row: row.astype(str).str.contains(wh_search_val, case=False).any(), axis=1)]
 
-        with wh_option_col2:
-            wh_filter_list = st.multiselect('Select Warehouse', warehouse_df['name'], default=None, label_visibility='collapsed')
+        # with wh_option_col2:
+        wh_filter_list = st.multiselect('Select Warehouse', warehouse_df['name'], default=None, label_visibility='collapsed')
 
         if wh_filter_list:
             warehouse_df = warehouse_df[warehouse_df['name'].isin(wh_filter_list)]
 
+        account_tags_df = pd.DataFrame(sesh.cache_sql_memory('show tags in account', st.session_state['account'], context['role']))
+        account_tags_df = account_tags_df[~account_tags_df['database_name'].isin(['SNOWFLAKE'])]
+        account_tags_df['allowed_values'] = account_tags_df['allowed_values'].fillna('[]')
 
-        display_warehouse_summary(warehouse_df)
+
+        # display_warehouse_summary(warehouse_df)
+        for index, row in warehouse_df.iterrows():
+            display_warehouse_tags(row, account_tags_df)
+
+        # st.table(account_tags_df)
 
 
-
-    st.table(warehouse_df)
+    # st.table(warehouse_df)
 
     # st.json(st.session_state)
     return True
