@@ -6,7 +6,7 @@ import json
 # import time
 
 def format_tag_dropdown(available_tags_df):
-    tags_list = ['New Tag']
+    tags_list = ['<Tag>']
     if type(available_tags_df) == None:
         available_tags_df = pd.DataFrame()
         available_tags_df.columns = ['database_name', 'schema_name', 'name', 'allowed_values']
@@ -17,7 +17,7 @@ def format_tag_dropdown(available_tags_df):
 
     return tags_list
 
-def display_warehouse_tags(warehouse_details, tags_df=None):
+def display_warehouse_tags(warehouse_details, tags_df=None, expanders_open=False):
     # Warehouse details should be a dict or "<class 'pandas.core.series.Series'>"
     if type(tags_df) == None:
         tags_df = pd.DataFrame()
@@ -35,9 +35,11 @@ def display_warehouse_tags(warehouse_details, tags_df=None):
         tag_values_df = pd.DataFrame(columns=['tag_db', 'tag_schema', 'tag_name'])
 
     tag_values_df = tag_values_df.merge(tags_df, how='left', left_on=['tag_db', 'tag_schema', 'tag_name'], right_on=['database_name', 'schema_name', 'name'])
+    tag_values_df['allowed_values'] = tag_values_df['allowed_values'].fillna('[]')
+
 
     # st.markdown('##### ' + warehouse_details['name'] + ' (' + warehouse_details['size'] + ')')
-    with st.expander(warehouse_details['name'] + ' (' + warehouse_details['size'] + ')'):
+    with st.expander(warehouse_details['name'] + ' (' + warehouse_details['size'] + ')', expanded=expanders_open):
         # st.write(warehouse_details['name'] + ' (' + warehouse_details['size'] + ')')
         st.caption('*New tag values may take up to 3 hours to propagate in the Snowflake account usage views.')
 
@@ -49,24 +51,24 @@ def display_warehouse_tags(warehouse_details, tags_df=None):
                 st.markdown('`' + row['tag_db'] + ' > ' + row['tag_schema'] + '`\n\n' + row['tag_name'])
 
             with tag_disp_col2:
-                new_value = st.text_input('Tag Value', row['value'], key=key_base + '_new_val_' + str(index), label_visibility='collapsed',)
-                if new_value and new_value != row['value']:
-                    alter_text = 'alter warehouse ' + warehouse_details['name'] + ' set tag ' + key_base + ' = $$' + new_value + '$$'
-                    try:
-                        # add_tag_value_result = sesh.run_sql(alter_text)
-                        add_tag_value_result = st.session_state['main_session'].sql(alter_text).collect()
-                        st.success('Successfully updated tag value!')
-                    except:
-                        st.error('Error: Unable to set tag value. Check to make sure the current role has access to set tags on this warehouse.')
-                    # time.sleep(2)
-                    # st.experimental_rerun()
-                    # new_value = row['value']
-                st.caption('Allowed Values: ' + row['allowed_values'])
+                new_value = st.text_input('Tag Value', row['value'], key=key_base + '_new_val+' + warehouse_details['name'], label_visibility='collapsed',)
+                st.caption('Allowed Values: ' + str(row['allowed_values']))
+            if new_value and new_value != row['value']:
+                alter_text = 'alter warehouse ' + warehouse_details['name'] + ' set tag ' + key_base + ' = $$' + new_value + '$$'
+                try:
+                    # add_tag_value_result = sesh.run_sql(alter_text)
+                    add_tag_value_result = st.session_state['main_session'].sql(alter_text).collect()
+                    st.success('Successfully updated tag value!')
+                except:
+                    st.error('Error: Unable to set tag value. Check to make sure the current role has access to set tags on this warehouse.')
+                # time.sleep(2)
+                # st.experimental_rerun()
+                # new_value = row['value']
             
         # add_tag_form(tag_values_df)
         with st.form(key=warehouse_details['name'] + '_new_value_form', clear_on_submit=True):
             dropdown_values = format_tag_dropdown(tags_df)
-            new_tag_val_col1, new_tag_val_col2 = st.columns(2)
+            new_tag_val_col1, new_tag_val_col2, new_tag_val_button_col = st.columns([3, 3, 1])
 
             with new_tag_val_col1:
                 new_tag_name = st.selectbox('Tag', dropdown_values, label_visibility='collapsed')
@@ -74,19 +76,23 @@ def display_warehouse_tags(warehouse_details, tags_df=None):
             with new_tag_val_col2:
                 new_tag_value = st.text_input('Tag Value', '', placeholder='Tag Value', label_visibility='collapsed')
 
-            if st.form_submit_button('Set Tag'):
-                if new_tag_value and new_tag_name != 'New Tag':
+            with new_tag_val_button_col:
+                tag_submitted = st.form_submit_button('Set Tag')
+
+            if tag_submitted:
+                if new_tag_value and new_tag_name != '<Tag>':
                     new_tag_alter = 'alter warehouse ' + warehouse_details['name'] + ' set tag ' + new_tag_name + ' = $$' + new_tag_value + '$$'
                     try:
                         # new_tag_result = sesh.run_sql(new_tag_alter)
                         new_tag_result = st.session_state['main_session'].sql(new_tag_alter).collect()
-                        st.success(new_tag_result[0]['status'])
+                        # st.success(new_tag_result[0]['status'])
+                        st.success('New tag value added successfully!')
                     except:
                         st.error('Error: Unable to set tag value. Check to make sure the current role has access to set tags on this warehouse.')
                     # st.code(new_tag_alter)
                     # time.sleep(2)
                     # st.experimental_rerun()
-                    new_tag_value = 'New Tag'
+                    new_tag_value = '<Tag>'
                 else:
                     st.error('Error: Be sure to select a tag AND set a tag value. If no tags are available, create one...')
 
@@ -116,13 +122,27 @@ def main():
         wh_option_col1, wh_option_col2 = st.columns([1, 3])
 
         with wh_option_col1:
+            all_expanders_open = st.checkbox('Expand All', help='Expand all warehouse tag details.')
             # summary_days = st.slider('Days of Recent History', 0, 30, 7, step=1, help="0 indicates today's history only")
             only_untagged = st.checkbox('Untagged Only', help='Only show warehouses that are not tagged at all.')
 
         with wh_option_col2:
             wh_search_val = st.text_input('Warehouse Search', value='', placeholder='Warehouse Search', label_visibility='collapsed')
-        # if 'role'
+
         warehouse_df = pd.DataFrame(sesh.cache_sql_disk('show warehouses', st.session_state['account'], context['role']))
+
+        wh_filter_list = st.multiselect('Select Warehouse', warehouse_df['name'], default=None, label_visibility='collapsed')
+
+        tag_name_search_col, tag_value_search_col = st.columns(2)
+        with tag_name_search_col:
+            # Specifically search tag names
+            tag_name_search_val = st.text_input('Search Tag Names', value='', placeholder='Search Tag Names', label_visibility='collapsed')
+        
+        with tag_value_search_col:
+            # This one REALLY needs to be changed to be searching for tag values.
+            tag_value_search_val = st.text_input('Search Tag Values', value='', placeholder='Search Tag Values', label_visibility='collapsed')
+
+        # if 'role'
         # wh_summary_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_QUERY_HISTORY_SUMMARY.format(date_range = str(summary_days)), st.session_state['account'], context['role']))
         wh_tags_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_TAG_SUMMARY, st.session_state['account'], context['role']))
         # wh_metering_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_METERING_SUMMARY.format(date_range = str(summary_days)), st.session_state['account'], context['role']))
@@ -133,6 +153,9 @@ def main():
 
         warehouse_df['TAG_JSON'] = warehouse_df['TAG_JSON'].fillna('[]')
 
+        # if tag_search_val:
+        #     warehouse_df = warehouse_df[warehouse_df.apply(lambda row: row.astype(str).str.contains(tag_search_val, case=False).any(), axis=1)]
+
         if only_untagged:
             warehouse_df = warehouse_df[warehouse_df['TAG_JSON'].isin(['[]'])]
 
@@ -140,19 +163,19 @@ def main():
             warehouse_df = warehouse_df[warehouse_df.apply(lambda row: row.astype(str).str.contains(wh_search_val, case=False).any(), axis=1)]
 
         # with wh_option_col2:
-        wh_filter_list = st.multiselect('Select Warehouse', warehouse_df['name'], default=None, label_visibility='collapsed')
-
         if wh_filter_list:
             warehouse_df = warehouse_df[warehouse_df['name'].isin(wh_filter_list)]
 
         account_tags_df = pd.DataFrame(sesh.cache_sql_memory('show tags in account', st.session_state['account'], context['role']))
-        account_tags_df = account_tags_df[~account_tags_df['database_name'].isin(['SNOWFLAKE'])]
-        account_tags_df['allowed_values'] = account_tags_df['allowed_values'].fillna('[]')
+        if tag_value_search_val:
+            account_tags_df = account_tags_df[account_tags_df.apply(lambda row: row.astype(str).str.contains(tag_value_search_val, case=False).any(), axis=1)]
 
+        account_tags_df = account_tags_df[~account_tags_df['database_name'].isin(['SNOWFLAKE'])]
+        # account_tags_df['allowed_values'] = account_tags_df['allowed_values'].fillna('[]')
 
         # display_warehouse_summary(warehouse_df)
         for index, row in warehouse_df.iterrows():
-            display_warehouse_tags(row, account_tags_df)
+            display_warehouse_tags(row, account_tags_df, all_expanders_open)
 
         # st.table(account_tags_df)
 

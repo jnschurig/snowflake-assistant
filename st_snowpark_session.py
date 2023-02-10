@@ -33,6 +33,7 @@ def format_account_url(unformatted_sf_url):
 
     return new_url
 
+@st.cache_resource(show_spinner=False)
 def create_session(creds_dict):
     ''' 
     Expecting a dict object that contains user credentials. 
@@ -147,7 +148,7 @@ def run_sql(sql):
         st.error('No valid session')
         return None
 
-@st.experimental_memo(persist='disk', show_spinner=False)
+@st.cache_data(persist='disk', show_spinner=False)
 def cache_sql_disk(sql, account='account', role=''):
     ''' 
     Cache the results of a sql result to disk, which 
@@ -169,7 +170,7 @@ def cache_sql_disk(sql, account='account', role=''):
         #     st.error('No valid session')
         #     return None
 
-@st.experimental_memo(persist=None, ttl=constants.MEMORY_CACHE_MAX_AGE_SECONDS, show_spinner=False)
+@st.cache_data(persist=None, ttl=constants.MEMORY_CACHE_MAX_AGE_SECONDS, show_spinner=False)
 def cache_sql_memory(sql, account='account', role=''):
     ''' 
     Cache the results of a sql result in memory for up 
@@ -198,7 +199,8 @@ def clear_all_cache():
     streamlit.
     ''' 
     # Clears all cached content on this server. 
-    st.experimental_memo.clear()
+    # st.experimental_memo.clear()
+    st.cache_data.clear()
     return True
 
 def close_session():
