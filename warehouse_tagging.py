@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import st_snowpark_session as sesh
 import reference_queries as rq
+# import tag_manager as tags
 import json 
 import utility
 # import time
@@ -75,7 +76,10 @@ def display_warehouse_tags(warehouse_details, tags_df=None, expanders_open=False
             with tag_disp_col2:
                 # Display the existing tag value and accept a new value for "updating" the tag.
                 new_value = st.text_input('Tag Value', row['value'], key=key_base + '_new_val+' + warehouse_details['name'], label_visibility='collapsed',)
-                st.caption('Allowed Values: ' + str(row['allowed_values']))
+                if str(row['allowed_values']) == '[]':
+                    st.caption('Allowed Values: any')
+                else:
+                    st.caption('Allowed Values: ' + json.dumps(row['allowed_values'], indent=0))
             if new_value and new_value != row['value']:
                 alter_text = 'alter warehouse ' + warehouse_details['name'] + ' set tag ' + key_base + ' = $$' + new_value + '$$'
                 try:
@@ -123,11 +127,80 @@ def main():
     st.session_state to contain 'authenticated' and 'main_session', as a 
     bool and Snowflake connection object.
     '''
-    st.markdown('### Warehouse Tagging')
-
     warehouse_df = pd.DataFrame()
 
-    # Authentication section
+    # Options and search columns
+    wh_option_col1, wh_option_col2 = st.columns([1, 3])
+
+    with wh_option_col1:
+        all_expanders_open = st.checkbox('Expand All', value=True, help='Expand all warehouse tag details.')
+        only_untagged = st.checkbox('Untagged Only', help='Only show warehouses that are not tagged at all.')
+
+    with wh_option_col2:
+        wh_search_val = st.text_input('Search', value='', placeholder='Warehouse Search', label_visibility='collapsed', help='Search among warehouses, their attributes, tag names, and tag values.')
+
+    # Fetch all warehouse information available to the user/role.
+    warehouse_df = pd.DataFrame(sesh.cache_sql_disk('show warehouses', st.session_state['account'], st.session_state['current_context']['role']))
+
+    # Fetch all existing warehouse tag values.
+    wh_tags_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_TAG_SUMMARY, st.session_state['account'], st.session_state['current_context']['role']))
+
+    # Fetch all tags in the account, regardless of current assignments.
+    account_tags_df = pd.DataFrame(sesh.cache_sql_memory('show tags in account', st.session_state['account'], st.session_state['current_context']['role']))
+
+    # Gather search and filter options.
+    wh_filter_list = st.multiselect('Select Warehouse', warehouse_df['name'], default=None, label_visibility='collapsed')
+
+    tag_name_search_col, tag_value_search_col = st.columns(2)
+    with tag_name_search_col:
+        # Explicitly search tag NAMES
+        tag_name_search_val = st.text_input('Search Tag Names', value='', placeholder='Search Tag Names', label_visibility='collapsed')
+    
+    with tag_value_search_col:
+        # Explicitly search tag VALUES
+        tag_value_search_val = st.text_input('Search Tag Values', value='', placeholder='Search Tag Values', label_visibility='collapsed')
+
+    # Join Warehouse information and tag information
+    warehouse_df = warehouse_df.merge(wh_tags_df, how='left', left_on='name', right_on='WAREHOUSE_NAME')
+
+    # NA and NaN are the dumbest values
+    warehouse_df['TAG_JSON'] = warehouse_df['TAG_JSON'].fillna('[]')
+    account_tags_df = account_tags_df[~account_tags_df['database_name'].isin(['SNOWFLAKE'])]
+
+    # For each warehouse, get valid tag names (as keys) and tag values as separate lists (for searching)
+    warehouse_df = utility.split_dataframe_column_json(warehouse_df, 'TAG_JSON')
+
+    # Apply filters and searches from above and reduce size of joined dataframes
+    if only_untagged:
+        warehouse_df = warehouse_df[warehouse_df['TAG_JSON'].isin(['[]'])]
+
+    if wh_search_val:
+        warehouse_df = warehouse_df[warehouse_df.apply(lambda row: row.astype(str).str.contains(wh_search_val, case=False).any(), axis=1)]
+
+    if wh_filter_list:
+        warehouse_df = warehouse_df[warehouse_df['name'].isin(wh_filter_list)]
+
+    if tag_name_search_val:
+        warehouse_df = warehouse_df[warehouse_df['TAG_JSON_keys'].str.contains(tag_name_search_val, case=False)]
+
+    if tag_value_search_val:
+        warehouse_df = warehouse_df[warehouse_df['TAG_JSON_values'].str.contains(tag_value_search_val, case=False)]
+
+    # Iterate through each row of warehouse info and display details.
+    for index, row in warehouse_df.iterrows():
+        display_warehouse_tags(row, account_tags_df, all_expanders_open)
+
+    return True
+
+if __name__ == '__main__':
+    st.set_page_config(
+        page_title='Warehouse Tagging',
+        layout='centered',
+        initial_sidebar_state='collapsed',
+    )
+
+    st.markdown('### Warehouse Tagging')
+
     if 'authenticated' not in st.session_state:
         st.session_state['authenticated'] = False
 
@@ -145,74 +218,4 @@ def main():
         with context_container:
             st.caption(sesh.format_context(context))
 
-        # Options and search columns
-        wh_option_col1, wh_option_col2 = st.columns([1, 3])
-
-        with wh_option_col1:
-            all_expanders_open = st.checkbox('Expand All', value=True, help='Expand all warehouse tag details.')
-            only_untagged = st.checkbox('Untagged Only', help='Only show warehouses that are not tagged at all.')
-
-        with wh_option_col2:
-            wh_search_val = st.text_input('Search', value='', placeholder='Warehouse Search', label_visibility='collapsed', help='Search among warehouses, their attributes, tag names, and tag values.')
-
-        # Fetch all warehouse information available to the user/role.
-        warehouse_df = pd.DataFrame(sesh.cache_sql_disk('show warehouses', st.session_state['account'], context['role']))
-
-        # Fetch all existing warehouse tag values.
-        wh_tags_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_TAG_SUMMARY, st.session_state['account'], context['role']))
-
-        # Fetch all tags in the account, regardless of current assignments.
-        account_tags_df = pd.DataFrame(sesh.cache_sql_memory('show tags in account', st.session_state['account'], context['role']))
-
-        # Gather search and filter options.
-        wh_filter_list = st.multiselect('Select Warehouse', warehouse_df['name'], default=None, label_visibility='collapsed')
-
-        tag_name_search_col, tag_value_search_col = st.columns(2)
-        with tag_name_search_col:
-            # Explicitly search tag NAMES
-            tag_name_search_val = st.text_input('Search Tag Names', value='', placeholder='Search Tag Names', label_visibility='collapsed')
-        
-        with tag_value_search_col:
-            # Explicitly search tag VALUES
-            tag_value_search_val = st.text_input('Search Tag Values', value='', placeholder='Search Tag Values', label_visibility='collapsed')
-
-        # Join Warehouse information and tag information
-        warehouse_df = warehouse_df.merge(wh_tags_df, how='left', left_on='name', right_on='WAREHOUSE_NAME')
-
-        # NA and NaN are the dumbest values
-        warehouse_df['TAG_JSON'] = warehouse_df['TAG_JSON'].fillna('[]')
-        account_tags_df = account_tags_df[~account_tags_df['database_name'].isin(['SNOWFLAKE'])]
-
-        # For each warehouse, get valid tag names (as keys) and tag values as separate lists (for searching)
-        warehouse_df = utility.split_dataframe_column_json(warehouse_df, 'TAG_JSON')
-
-        # Apply filters and searches from above and reduce size of joined dataframes
-        if only_untagged:
-            warehouse_df = warehouse_df[warehouse_df['TAG_JSON'].isin(['[]'])]
-
-        if wh_search_val:
-            warehouse_df = warehouse_df[warehouse_df.apply(lambda row: row.astype(str).str.contains(wh_search_val, case=False).any(), axis=1)]
-
-        if wh_filter_list:
-            warehouse_df = warehouse_df[warehouse_df['name'].isin(wh_filter_list)]
-
-        if tag_name_search_val:
-            warehouse_df = warehouse_df[warehouse_df['TAG_JSON_keys'].str.contains(tag_name_search_val, case=False)]
-
-        if tag_value_search_val:
-            warehouse_df = warehouse_df[warehouse_df['TAG_JSON_values'].str.contains(tag_value_search_val, case=False)]
-
-        # Iterate through each row of warehouse info and display details.
-        for index, row in warehouse_df.iterrows():
-            display_warehouse_tags(row, account_tags_df, all_expanders_open)
-
-    return True
-
-if __name__ == '__main__':
-    st.set_page_config(
-        page_title='Warehouse Tagging',
-        layout='centered',
-        initial_sidebar_state='collapsed',
-    )
-
-    main()
+        main()

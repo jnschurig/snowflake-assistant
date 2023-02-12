@@ -68,3 +68,12 @@ select warehouse_name
   from daily_summary
  group by warehouse_name
 '''
+
+EXISTING_TAG_VALUES = '''-- Tag values query
+select tag_database
+      ,tag_schema
+      ,tag_name
+      ,array_agg(distinct tag_value) as tag_values
+  from snowflake.account_usage.tag_references
+ group by 1, 2, 3
+'''
