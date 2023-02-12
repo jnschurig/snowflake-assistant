@@ -1,5 +1,7 @@
 import math
 import constants
+import pandas as pd
+import json
 
 def format_wh_usage(with_header=True, warehouse_type='STANDARD'):
     ''' 
@@ -121,6 +123,27 @@ def convert_list_string(list_or_string, seperator=',', remove_quotes=True):
         list_or_string = list_or_string.split(seperator)
 
     return list_or_string
+
+def split_dataframe_column_json(input_dataframe, json_column):
+    output_dataframe = pd.DataFrame(input_dataframe)
+
+    if json_column in output_dataframe.columns:
+        output_dataframe[json_column + '_keys'] = ''
+        output_dataframe[json_column + '_values'] = ''
+    else:
+        return input_dataframe
+
+    for index, row in input_dataframe.iterrows():
+        all_keys = []
+        all_values = []
+        row_json = json.loads(row[json_column])
+        for j in row_json:
+            all_keys += j.keys()
+            all_values += j.values()
+        output_dataframe.at[index, json_column + '_keys'] = json.dumps(all_keys)
+        output_dataframe.at[index, json_column + '_values'] = json.dumps(all_values)
+
+    return output_dataframe
 
 if __name__ == '__main__':
     pass
