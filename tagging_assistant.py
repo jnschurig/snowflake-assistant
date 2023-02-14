@@ -50,6 +50,7 @@ if __name__ == '__main__':
         page_title='Tagging Assistant',
         layout='centered',
         initial_sidebar_state='collapsed',
+        page_icon='❄️'
     )
 
     go()
