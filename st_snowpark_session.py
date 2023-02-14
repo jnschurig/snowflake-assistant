@@ -92,6 +92,7 @@ def display_authentication(label_visibility_setting='visible'):
         # The button goes last, and will always be at the bottom of the first column
         with col1:
             if st.form_submit_button('Connect'):
+                st.cache_resource.clear()
                 creds['main'] = {
                     'account': main_url,
                     'user': main_user,
