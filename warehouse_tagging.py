@@ -140,13 +140,38 @@ def main():
         wh_search_val = st.text_input('Search', value='', placeholder='Warehouse Search', label_visibility='collapsed', help='Search among warehouses, their attributes, tag names, and tag values.')
 
     # Fetch all warehouse information available to the user/role.
-    warehouse_df = pd.DataFrame(sesh.cache_sql_disk('show warehouses', st.session_state['account'], st.session_state['current_context']['role']))
+    try:
+        warehouse_df = pd.DataFrame(sesh.cache_sql_disk('show warehouses', st.session_state['account'], st.session_state['current_context']['role']))
+
+    except:
+        st.error('Unable to fetch warehouses')
+        warehouse_df = pd.DataFrame()
+
+    if len(warehouse_df.index) == 0:
+        st.error('No warehouses found. Please use a role that has usage on one or more warehouses.')
+        return False
 
     # Fetch all existing warehouse tag values.
-    wh_tags_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_TAG_SUMMARY, st.session_state['account'], st.session_state['current_context']['role']))
+    try:
+        is_ok = st.session_state['main_session'].sql('select 1 as is_ok from snowflake.account_usage.tag_references limit 1').collect()[0]['IS_OK']
+        if is_ok:
+            wh_tags_df = pd.DataFrame(sesh.cache_sql_memory(rq.WAREHOUSE_TAG_SUMMARY, st.session_state['account'], st.session_state['current_context']['role']))
+    except:
+        tag_error_message = 'Unable to get warehouse tag values.'
+        if 'current_context' in st.session_state:
+            tag_error_message += ' Check that current role `' + st.session_state['current_context']['role'] + '` has access to the `SNOWFLAKE` database or change to a role that does.'
+        st.error(tag_error_message)
+        wh_tags_df = pd.DataFrame()
+
+    if len(wh_tags_df.index) == 0:
+        wh_tags_df['WAREHOUSE_NAME'] = ['']
+        wh_tags_df['TAG_JSON'] = ['[]']
 
     # Fetch all tags in the account, regardless of current assignments.
-    account_tags_df = pd.DataFrame(sesh.cache_sql_memory('show tags in account', st.session_state['account'], st.session_state['current_context']['role']))
+    try:
+        account_tags_df = pd.DataFrame(sesh.cache_sql_memory('show tags in account', st.session_state['account'], st.session_state['current_context']['role']))
+    except:
+        account_tags_df = None
 
     # Gather search and filter options.
     wh_filter_list = st.multiselect('Select Warehouse', warehouse_df['name'], default=None, label_visibility='collapsed')

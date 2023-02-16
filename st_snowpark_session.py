@@ -143,8 +143,9 @@ def run_sql(sql):
                 st.session_state['authenticated'] = False
                 del st.session_state['main_session']
                 st.experimental_rerun()
-            else:
-                raise err
+            return None
+            # else:
+            #     raise err
     else:
         st.error('No valid session')
         return None
@@ -167,6 +168,9 @@ def cache_sql_disk(sql, account='account', role=''):
                     st.session_state['authenticated'] = False
                     del st.session_state['main_session']
                     st.experimental_rerun()
+                return None
+            except:
+                return None
         # else:
         #     st.error('No valid session')
         #     return None
@@ -188,6 +192,9 @@ def cache_sql_memory(sql, account='account', role=''):
                 st.session_state['authenticated'] = False
                 del st.session_state['main_session']
                 st.experimental_rerun()
+            return None
+        except:
+            return None
     # else:
     #     st.error('No valid session')
     #     return None
@@ -210,9 +217,10 @@ def close_session():
     ''' 
     if 'main_session' in st.session_state:
         st.session_state['main_session'].close()
+        del st.session_state['main_session']
 
-    del st.session_state['main_session']
     st.session_state['authenticated'] = False
+    st.experimental_rerun()
 
     return True
 
