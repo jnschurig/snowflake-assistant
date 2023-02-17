@@ -5,6 +5,7 @@
 streamlit
 cron_descriptor
 pandas
+networkx
 
 # As of this writing, snowpark requires python 3.8.*
 snowflake-snowpark-python
