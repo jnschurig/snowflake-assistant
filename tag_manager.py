@@ -100,12 +100,21 @@ def fetch_and_display_tags():
     tags_df = tags_df[~tags_df['database_name'].isin(['SNOWFLAKE'])]
 
     # Get the existing values for tags.
-    tag_values_df = pd.DataFrame(sesh.cache_sql_memory(reference_queries.EXISTING_TAG_VALUES, st.session_state['account'], st.session_state['current_context']['role']))
+    try:
+        is_ok = st.session_state['main_session'].sql('select 1 as is_ok from snowflake.account_usage.tag_references limit 1').collect()[0]['IS_OK']
+        if is_ok:
+            tag_values_df = pd.DataFrame(sesh.cache_sql_memory(reference_queries.EXISTING_TAG_VALUES, st.session_state['account'], st.session_state['current_context']['role']))
+    except:
+        tag_error_message = 'Unable to get warehouse tag values.'
+        if 'current_context' in st.session_state:
+            tag_error_message += ' Check that current role `' + st.session_state['current_context']['role'] + '` has access to the `SNOWFLAKE` database or change to a role that does.'
+        st.error(tag_error_message)
+        tag_values_df = pd.DataFrame()
 
     # Initialize columns
     for default_col in ['TAG_DATABASE', 'TAG_SCHEMA', 'TAG_NAME', 'TAG_VALUES']:
         if default_col not in tag_values_df:
-            tag_values_df[default_col] = []
+            tag_values_df[default_col] = ['']
 
     # Combine tags and existing values.
     tags_df = tags_df.merge(tag_values_df, how='left', left_on=['database_name', 'schema_name', 'name'], right_on=['TAG_DATABASE', 'TAG_SCHEMA', 'TAG_NAME'])

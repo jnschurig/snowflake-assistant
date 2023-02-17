@@ -42,15 +42,26 @@ def go():
 
         with warehouse_tab:
             wt.main()
-
+    else:
+        message = 'Please Authenticate'
+        with tag_tab:
+            st.markdown(message)
+        with warehouse_tab:
+            st.markdown(message)
     return True
 
 if __name__ == '__main__':
     st.set_page_config(
         page_title='Tagging Assistant',
         layout='centered',
-        initial_sidebar_state='collapsed',
-        page_icon='❄️'
+        initial_sidebar_state='expanded',
+        page_icon='🧊'
     )
 
+    with st.sidebar:
+        st.markdown('#### App Options')
+        if st.button('Close Snowflake Session'):
+            sesh.close_session()
+        if st.button('Clear Cache'):
+            sesh.clear_all_cache()
     go()
