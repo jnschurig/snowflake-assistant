@@ -127,22 +127,21 @@ def main():
     st.session_state to contain 'authenticated' and 'main_session', as a 
     bool and Snowflake connection object.
     '''
-    warehouse_df = pd.DataFrame()
 
     # Options and search columns
     wh_option_col1, wh_option_col2 = st.columns([1, 3])
 
     with wh_option_col1:
-        all_expanders_open = st.checkbox('Expand All', value=True, help='Expand all warehouse tag details.')
         only_untagged = st.checkbox('Untagged Only', help='Only show warehouses that are not tagged at all.')
 
     with wh_option_col2:
         wh_search_val = st.text_input('Search', value='', placeholder='Warehouse Search', label_visibility='collapsed', help='Search among warehouses, their attributes, tag names, and tag values.')
 
+    all_expanders_default = True
+
     # Fetch all warehouse information available to the user/role.
     try:
         warehouse_df = pd.DataFrame(sesh.cache_sql_disk('show warehouses', st.session_state['account'], st.session_state['current_context']['role']))
-
     except:
         st.error('Unable to fetch warehouses')
         warehouse_df = pd.DataFrame()
@@ -150,6 +149,12 @@ def main():
     if len(warehouse_df.index) == 0:
         st.error('No warehouses found. Please use a role that has usage on one or more warehouses.')
         return False
+    elif len(warehouse_df.index) >= 10:
+        all_expanders_default = False
+
+    with wh_option_col1:
+        all_expanders_open = st.checkbox('Expand All', value=all_expanders_default, help='Expand all warehouse tag details.')
+
 
     # Fetch all existing warehouse tag values.
     try:
