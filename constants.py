@@ -173,3 +173,5 @@ TAG_FORM_FIELDS = [
 OBJECT_CREATION_COMMENT = 'Created by the Snowflake Assistant tool.'
 
 CODE_DISPLAY_OPTIONS = ['', 'ada', 'agda', 'bsl', 'crystal', 'cypher', 'flow', 'fsharp', 'hoon', 'inform7', 'log', 'makefile', 'markdown', 'moonscript', 'naniscript', 'pascaligo', 'properties', 'squirrel', 'yaml']
+
+SNOWFLAKE_BUILT_IN_ROLES = ['ACCOUNTADMIN', 'ORGADMIN', 'SECURITYADMIN', 'SYSADMIN', 'USERADMIN', 'PUBLIC']
