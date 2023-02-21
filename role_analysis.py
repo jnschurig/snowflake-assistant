@@ -82,14 +82,28 @@ def analyze_roles(roles_dataframe=None, users_dataframe=None):
         # Check for non-snowflake root roles
         if root_role not in constants.SNOWFLAKE_BUILT_IN_ROLES:
             # This is an abberant role...
-            st.warning('WARNING: Abberant root role detected! This role is not granted to one of the default Snowflake roles and is therefore isolated.')
+            st.warning('WARNING! Abberant root role detected! This role is not granted to one of the default Snowflake roles and is therefore isolated.')
             st.markdown('Role name: `' + root_role + '`.')
             st.markdown('Possibly affected roles: ' + json.dumps(get_all_neighbors(reverse_hierarchy, root_role)))
             st.markdown('---')
 
     # Check to make sure accountadmin IS a root role.
+    if 'ACCOUNTADMIN' not in hierarchy_dict.keys():
+        st.warning('WARNING! `ACCOUNTADMIN` role has been granted to another role. This is not recommended.')
+        st.write('ACCOUNTADMIN granted to: ' + str(list(nx.neighbors(hierarchy_graph, 'ACCOUNTADMIN'))))
+
     # Check to make sure sysadmin is only granted to accountadmin.
+    if list(nx.neighbors(hierarchy_graph, 'SYSADMIN')) != ['ACCOUNTADMIN']:
+        st.warning('WARNING! `SYSADMIN` has been granted to at least one role besides ACCOUNTADMIN.')
+        st.write('SYSADMIN granted to: ' + str(list(nx.neighbors(hierarchy_graph, 'SYSADMIN'))))
+
     # Check to make sure securityadmin and useradmin are not granted to sysadmin or orgadmin.
+    all_sec_admin_grants = nx.neighbors(reverse_hierarchy, 'SYSADMIN')
+    st.write(len(list(all_sec_admin_grants)))
+    st.write('THE POINT')
+    # st.write(all_sec_admin_grants)
+
+
     # Make sure that public has no children.
         
 
